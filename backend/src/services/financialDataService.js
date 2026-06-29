@@ -102,32 +102,45 @@ function mapQuoteSummaryToFinancialData(quoteSummary) {
 async function getFinancialData(companyName) {
   const normalizedCompanyName = validateCompanyName(companyName);
 
-  try {
-    const ticker = await resolveTicker(normalizedCompanyName);
+  let attempt = 0;
+  const maxAttempts = 3;
 
-    const quoteSummary = await yahooFinance.quoteSummary(ticker, {
-      modules: ['price', 'summaryDetail', 'summaryProfile', 'defaultKeyStatistics'],
-    });
+  while (attempt < maxAttempts) {
+    try {
+      const ticker = await resolveTicker(normalizedCompanyName);
 
-    if (!quoteSummary?.price?.symbol) {
-      throw new FinancialDataServiceError(`No financial data found for: ${normalizedCompanyName}`, {
-        code: 'DATA_NOT_FOUND',
+      const quoteSummary = await yahooFinance.quoteSummary(ticker, {
+        modules: ['price', 'summaryDetail', 'summaryProfile', 'defaultKeyStatistics'],
       });
-    }
 
-    return mapQuoteSummaryToFinancialData(quoteSummary);
-  } catch (error) {
-    if (error instanceof FinancialDataServiceError) {
-      throw error;
-    }
+      if (!quoteSummary?.price?.symbol) {
+        throw new FinancialDataServiceError(`No financial data found for: ${normalizedCompanyName}`, {
+          code: 'DATA_NOT_FOUND',
+        });
+      }
 
-    throw new FinancialDataServiceError(
-      `Failed to fetch financial data for: ${normalizedCompanyName}`,
-      {
-        code: 'FETCH_FAILED',
-        cause: error,
-      },
-    );
+      return mapQuoteSummaryToFinancialData(quoteSummary);
+    } catch (error) {
+      if (error instanceof FinancialDataServiceError && error.code !== 'FETCH_FAILED') {
+        throw error;
+      }
+
+      attempt++;
+      console.error(`Yahoo Finance Error on attempt ${attempt}:`, error.message);
+      
+      if (attempt >= maxAttempts) {
+        throw new FinancialDataServiceError(
+          `Failed to fetch financial data for: ${normalizedCompanyName} (After ${maxAttempts} attempts)`,
+          {
+            code: 'FETCH_FAILED',
+            cause: error,
+          },
+        );
+      }
+      
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise(res => setTimeout(res, delay));
+    }
   }
 }
 

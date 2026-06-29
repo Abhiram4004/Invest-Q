@@ -51,6 +51,16 @@ async function analyze(req, res) {
     });
   } catch (error) {
     const status = getErrorStatus(error);
+    
+    console.error("====== API REQUEST ERROR ======");
+    console.error(`Status Code: ${status}`);
+    console.error(`Message: ${error.message}`);
+    if (error.cause) {
+      console.error(`Cause:`, error.cause);
+    } else {
+      console.error(error);
+    }
+    console.error("===============================");
 
     return res.status(status).json({
       error: error.message || 'Failed to analyze company',
