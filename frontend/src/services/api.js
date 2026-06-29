@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3000/api'; // Assuming backend runs on 3000 by default
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 export async function analyzeCompany(companyName) {
   try {
